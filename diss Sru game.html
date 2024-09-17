@@ -1,0 +1,329 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dissertation Structure Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        /* Task Pool with Two-Column Layout */
+        #taskPool {
+            width: 100%;
+            max-width: 800px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            justify-items: start; /* Align tasks to the start */
+        }
+        /* Stage Columns Layout using CSS Grid */
+        .stages-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+        .column {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+        .column h2 {
+            text-align: center;
+            color: #444;
+            font-size: 1em;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .task {
+            background: #e9e9e9;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
+            cursor: move;
+            transition: background-color 0.3s ease;
+            font-size: 0.9em;
+            white-space: nowrap; /* Keeps the text on a single line */
+            display: inline-block; /* Allows width to fit content */
+            max-width: 100%; /* Prevents tasks from exceeding container width */
+            box-sizing: border-box;
+        }
+        .task.dragging {
+            opacity: 0.5;
+        }
+        .task.correct {
+            background-color: #90EE90;
+        }
+        .task.incorrect {
+            background-color: #FFB6C1;
+        }
+        #score {
+            text-align: center;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+        #gameOver {
+            text-align: center;
+            font-size: 1.5em;
+            color: #4CAF50;
+            margin-top: 20px;
+        }
+        button {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 900px) {
+            .stages-container {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                max-width: 1000px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            #taskPool {
+                grid-template-columns: 1fr; /* Single column for Task Pool on small screens */
+            }
+            .stages-container {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Dissertation Structure Game</h1>
+    <div id="score">Score: 0</div>
+    <div class="game-container" id="gameContainer"></div>
+    <div id="gameOver"></div>
+    <button id="resetButton" style="display: none;">Play Again</button>
+
+    <script>
+        const stages = [
+            { id: 'title', title: 'Title' },
+            { id: 'abstract', title: 'Abstract' },
+            { id: 'introduction', title: 'Introduction' },
+            { id: 'literature', title: 'Literature Review' },
+            { id: 'methodology', title: 'Methodology' },
+            { id: 'results', title: 'Results' },
+            { id: 'discussion', title: 'Discussion' },
+            { id: 'conclusion', title: 'Conclusion' },
+            { id: 'recommendations', title: 'Recommendations' },
+            { id: 'references', title: 'References' },
+            { id: 'appendices', title: 'Appendices' }
+        ];
+
+        const tasks = [
+            { id: 'task1', content: 'Dissertation title', stage: 'title' },
+            { id: 'task2', content: 'Abstract description', stage: 'abstract' },
+            { id: 'task3', content: 'Problem statement for Introduction', stage: 'introduction' },
+            { id: 'task4', content: 'Literature analysis points', stage: 'literature' },
+            { id: 'task5', content: 'Methodology description', stage: 'methodology' },
+            { id: 'task6', content: 'Results description (charts, analysis)', stage: 'results' },
+            { id: 'task7', content: 'Discussion points (interpretation of results)', stage: 'discussion' },
+            { id: 'task8', content: 'Conclusion summary', stage: 'conclusion' },
+            { id: 'task9', content: 'Recommendations for future research', stage: 'recommendations' },
+            { id: 'task10', content: 'Reference section (Harvard style)', stage: 'references' },
+            { id: 'task11', content: 'Appendices items (interviews, transcripts)', stage: 'appendices' }
+        ];
+
+        let score = 0;
+        const gameContainer = document.getElementById('gameContainer');
+        const scoreDisplay = document.getElementById('score');
+        const gameOverDisplay = document.getElementById('gameOver');
+        const resetButton = document.getElementById('resetButton');
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function createGameBoard() {
+            gameContainer.innerHTML = '';
+            score = 0;
+            scoreDisplay.textContent = `Score: ${score}`;
+            gameOverDisplay.textContent = '';
+            resetButton.style.display = 'none';
+
+            // Create Task Pool
+            const taskPool = document.createElement('div');
+            taskPool.className = 'task-pool';
+            taskPool.innerHTML = '<h2>Task Pool</h2>';
+            taskPool.id = 'taskPool';
+            gameContainer.appendChild(taskPool);
+
+            // Create Stages Container
+            const stagesContainer = document.createElement('div');
+            stagesContainer.className = 'stages-container';
+            gameContainer.appendChild(stagesContainer);
+
+            // Shuffle tasks and add to Task Pool
+            shuffleArray(tasks);
+            tasks.forEach(task => {
+                const taskElement = createTaskElement(task);
+                taskPool.appendChild(taskElement);
+            });
+
+            // Create Stage Columns
+            stages.forEach(stage => {
+                const column = document.createElement('div');
+                column.className = 'column';
+                column.innerHTML = `<h2>${stage.title}</h2>`;
+                column.id = stage.id;
+                stagesContainer.appendChild(column);
+            });
+
+            setupDragAndDrop();
+        }
+
+        function createTaskElement(task) {
+            const taskElement = document.createElement('div');
+            taskElement.className = 'task';
+            taskElement.draggable = true;
+            taskElement.id = task.id;
+            taskElement.textContent = task.content;
+            return taskElement;
+        }
+
+        function setupDragAndDrop() {
+            const tasksElements = document.querySelectorAll('.task');
+            const columns = document.querySelectorAll('.column');
+
+            tasksElements.forEach(task => {
+                task.addEventListener('dragstart', dragStart);
+                task.addEventListener('dragend', dragEnd);
+            });
+
+            columns.forEach(column => {
+                column.addEventListener('dragover', dragOver);
+                column.addEventListener('dragenter', dragEnter);
+                column.addEventListener('dragleave', dragLeave);
+                column.addEventListener('drop', drop);
+            });
+
+            // Prevent tasks from being dropped back into the Task Pool
+            const taskPool = document.getElementById('taskPool');
+            taskPool.addEventListener('dragover', dragOver);
+            taskPool.addEventListener('dragenter', dragEnterPool);
+            taskPool.addEventListener('dragleave', dragLeavePool);
+            taskPool.addEventListener('drop', dropPool);
+        }
+
+        function dragStart() {
+            this.classList.add('dragging');
+        }
+
+        function dragEnd() {
+            this.classList.remove('dragging');
+        }
+
+        function dragOver(e) {
+            e.preventDefault();
+        }
+
+        function dragEnter(e) {
+            e.preventDefault();
+            this.style.background = '#e9e9e9';
+        }
+
+        function dragLeave() {
+            this.style.background = '';
+        }
+
+        function drop(e) {
+            e.preventDefault();
+            this.style.background = '';
+            const task = document.querySelector('.dragging');
+            this.appendChild(task);
+            checkScore(task, this);
+            checkGameOver();
+        }
+
+        // Prevent dropping back into the Task Pool
+        function dragEnterPool(e) {
+            e.preventDefault();
+            // Optionally, you can add visual feedback here
+        }
+
+        function dragLeavePool() {
+            // Optionally, remove visual feedback here
+        }
+
+        function dropPool(e) {
+            e.preventDefault();
+            // Do not allow dropping tasks back into the Task Pool
+            const task = document.querySelector('.dragging');
+            if (task && task.parentElement.id !== 'taskPool') {
+                taskPool.appendChild(task);
+            }
+            // Optionally, provide feedback
+        }
+
+        function checkScore(task, column) {
+            const taskData = tasks.find(t => t.id === task.id);
+            task.classList.remove('correct', 'incorrect');
+            if (taskData.stage === column.id) {
+                score += 5; // Each correct placement gives 5 marks
+                scoreDisplay.textContent = `Score: ${score}`;
+                task.classList.add('correct');
+                // Disable further dragging for correct tasks
+                task.draggable = false;
+            } else {
+                task.classList.add('incorrect');
+            }
+        }
+
+        function checkGameOver() {
+            const remainingTasks = document.querySelectorAll('#taskPool .task');
+            if (remainingTasks.length === 0) {
+                gameOverDisplay.textContent = `Game Over! Your final score is ${score} out of ${tasks.length * 5}.`;
+                resetButton.style.display = 'block';
+            }
+        }
+
+        resetButton.addEventListener('click', createGameBoard);
+
+        // Initialize the game board on page load
+        createGameBoard();
+    </script>
+</body>
+</html>
